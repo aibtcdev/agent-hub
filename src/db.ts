@@ -92,6 +92,13 @@ export const listTasksForAgent = db.prepare<{ agent_id: string }, Task>(
   `SELECT * FROM tasks WHERE to_agent = @agent_id ORDER BY created_at DESC`
 );
 
+export const listTasksForAgentByStatus = db.prepare<
+  { agent_id: string; status: string },
+  Task
+>(
+  `SELECT * FROM tasks WHERE to_agent = @agent_id AND status = @status ORDER BY created_at DESC`
+);
+
 export const completeTask = db.prepare<{
   id: string;
   status: string;

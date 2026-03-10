@@ -4,6 +4,8 @@ import {
   insertTask,
   getTask,
   getAgent,
+  listTasksForAgent,
+  listTasksForAgentByStatus,
   completeTask,
   touchAgent,
 } from "../db.js";
@@ -71,6 +73,52 @@ app.post("/", async (c) => {
   touchAgent.run({ id: auth.agentAddress });
 
   return c.json({ ok: true, task_id: taskId }, 201);
+});
+
+/**
+ * GET /tasks
+ * Poll for tasks assigned to the authenticated agent.
+ *
+ * For GET requests with no body, sign an empty string ("") as the message.
+ * Note: this signature is replayable — a timestamp nonce is recommended for v2.
+ *
+ * Query params:
+ *   ?status=pending|active|completed|failed   (optional, returns all if omitted)
+ *   ?to_agent=<stacks-address>                (optional, must match auth address if provided)
+ */
+app.get("/", (c) => {
+  const auth = extractAuth(c.req.raw.headers, "");
+  if (!auth.ok) {
+    return c.json({ error: auth.error }, 401);
+  }
+
+  const statusFilter = c.req.query("status");
+  const toAgentFilter = c.req.query("to_agent");
+
+  // If caller specifies to_agent, it must match the authenticated agent
+  if (toAgentFilter && toAgentFilter !== auth.agentAddress) {
+    return c.json(
+      { error: "to_agent must match the authenticated agent address" },
+      403
+    );
+  }
+
+  const tasks = statusFilter
+    ? listTasksForAgentByStatus.all({
+        agent_id: auth.agentAddress,
+        status: statusFilter,
+      })
+    : listTasksForAgent.all({ agent_id: auth.agentAddress });
+
+  touchAgent.run({ id: auth.agentAddress });
+
+  return c.json(
+    tasks.map((t) => ({
+      ...t,
+      payload: t.payload ? JSON.parse(t.payload) : null,
+      result: t.result ? JSON.parse(t.result) : null,
+    }))
+  );
 });
 
 /**
