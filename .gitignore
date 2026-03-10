@@ -4,3 +4,5 @@ node_modules/
 *.db-shm
 dist/
 .env
+.dev.vars
+.wrangler/

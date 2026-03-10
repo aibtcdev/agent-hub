@@ -7,7 +7,9 @@
     "dev": "bun run --watch src/index.ts",
     "start": "bun run src/index.ts",
     "db:reset": "rm -f agent-hub.db && bun run src/index.ts",
-    "test": "bun test"
+    "test": "bun test",
+    "deploy": "wrangler deploy",
+    "cf:dev": "wrangler dev"
   },
   "dependencies": {
     "bitcoinjs-message": "^2.2.0",
@@ -15,6 +17,7 @@
     "uuid": "^11.1.0"
   },
   "devDependencies": {
+    "@cloudflare/workers-types": "^4.20241205.0",
     "@noble/curves": "^2.0.1",
     "@noble/hashes": "^2.0.1",
     "@scure/base": "^2.0.0",
@@ -22,6 +25,7 @@
     "bitcoinjs-lib": "^7.0.0",
     "ecpair": "^3.0.0",
     "tiny-secp256k1": "^2.2.3",
-    "typescript": "^5.7.0"
+    "typescript": "^5.7.0",
+    "wrangler": "^3.99.0"
   }
 }

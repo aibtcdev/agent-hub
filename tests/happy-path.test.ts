@@ -17,13 +17,16 @@ import * as tinysecp from "tiny-secp256k1";
 import * as bitcoin from "bitcoinjs-lib";
 import bitcoinMessage from "bitcoinjs-message";
 
-// Set DB_PATH to a temp file BEFORE importing anything that loads db.ts.
-// db.ts is a module-level singleton — it must read DB_PATH at init time.
+// Set up a temp DB for testing
 const tmpDir = mkdtempSync("/tmp/agent-hub-test-");
-process.env.DB_PATH = join(tmpDir, "test.db");
+const testDbPath = join(tmpDir, "test.db");
 
-// Dynamic import ensures db.ts sees the env var above
-const { app } = await import("../src/index.ts");
+// Import app factory and bun DB client
+import { createApp } from "../src/app.js";
+import { createBunClient } from "../src/db-bun.js";
+
+const db = createBunClient(testDbPath);
+const app = createApp(db);
 
 const ECPair = ECPairFactory(tinysecp);
 
