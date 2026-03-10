@@ -6,11 +6,11 @@ import { Hono } from "hono";
 import { cors } from "hono/cors";
 
 // worker-logs RPC binding type
-type LogsBinding = {
+interface LogsBinding {
   info: (appId: string, msg: string, context?: Record<string, unknown>) => Promise<void>;
   warn: (appId: string, msg: string, context?: Record<string, unknown>) => Promise<void>;
   error: (appId: string, msg: string, context?: Record<string, unknown>) => Promise<void>;
-};
+}
 
 const APP_ID = "agent-hub";
 
@@ -67,10 +67,6 @@ interface TaskRow {
 
 // ---- Helpers ----
 
-function jsonOk(data: unknown, status = 200): Response {
-  return Response.json(data, { status });
-}
-
 function jsonErr(error: string, status: number, code?: string): Response {
   return Response.json({ error, code: code ?? "ERROR" }, { status });
 }
@@ -100,11 +96,12 @@ app.use("*", async (c, next) => {
   const logs = c.env?.LOGS;
   if (logs) {
     const duration = Date.now() - start;
+    const pathname = new URL(c.req.url).pathname;
     const ctx = c.executionCtx;
     const logEntry = logs
-      .info(APP_ID, `${c.req.method} ${new URL(c.req.url).pathname}`, {
+      .info(APP_ID, `${c.req.method} ${pathname}`, {
         method: c.req.method,
-        path: new URL(c.req.url).pathname,
+        path: pathname,
         status: c.res.status,
         duration_ms: duration,
         user_agent: c.req.header("user-agent")?.slice(0, 100),
@@ -258,14 +255,13 @@ app.post("/agents", async (c) => {
     )
     .run();
 
-  // Replace capabilities if provided
+  // Replace capabilities if provided (batched for atomicity)
   if (body.capabilities && body.capabilities.length > 0) {
-    await c.env.DB.prepare("DELETE FROM capabilities WHERE agent_name = ?")
-      .bind(body.agent_name)
-      .run();
+    const deleteStmt = c.env.DB.prepare("DELETE FROM capabilities WHERE agent_name = ?")
+      .bind(body.agent_name);
 
-    for (const cap of body.capabilities) {
-      await c.env.DB.prepare(`
+    const insertStmts = body.capabilities.map((cap) =>
+      c.env.DB.prepare(`
         INSERT INTO capabilities (agent_name, skill_name, description, has_sensor, has_cli, tags, registered_at)
         VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7)
       `)
@@ -278,8 +274,9 @@ app.post("/agents", async (c) => {
           cap.tags ? JSON.stringify(cap.tags) : null,
           ts
         )
-        .run();
-    }
+    );
+
+    await c.env.DB.batch([deleteStmt, ...insertStmts]);
   }
 
   return c.json({ ok: true, agent_name: body.agent_name, updated_at: ts }, 201);
