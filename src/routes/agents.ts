@@ -55,8 +55,6 @@ app.post("/register", async (c) => {
     bitcoin_address: auth.bitcoinAddress,
     capabilities: body.capabilities ? JSON.stringify(body.capabilities) : null,
     endpoint_url: body.endpoint_url ?? null,
-    registered_at: new Date().toISOString(),
-    last_seen: null,
   });
 
   return c.json({ ok: true, agent_id: auth.agentAddress }, 201);

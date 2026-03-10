@@ -63,10 +63,6 @@ app.post("/", async (c) => {
     to_agent: body.to_agent,
     subject: body.subject,
     payload: body.payload ? JSON.stringify(body.payload) : null,
-    status: "pending",
-    result: null,
-    created_at: new Date().toISOString(),
-    completed_at: null,
   });
 
   // Touch sender's last_seen

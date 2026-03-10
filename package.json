@@ -6,17 +6,22 @@
   "scripts": {
     "dev": "bun run --watch src/index.ts",
     "start": "bun run src/index.ts",
-    "db:reset": "rm -f agent-hub.db && bun run src/index.ts"
+    "db:reset": "rm -f agent-hub.db && bun run src/index.ts",
+    "test": "bun test"
   },
   "dependencies": {
-    "hono": "^4.7.0",
-    "better-sqlite3": "^11.8.0",
     "bitcoinjs-message": "^2.2.0",
+    "hono": "^4.7.0",
     "uuid": "^11.1.0"
   },
   "devDependencies": {
-    "@types/better-sqlite3": "^7.6.13",
+    "@noble/curves": "^2.0.1",
+    "@noble/hashes": "^2.0.1",
+    "@scure/base": "^2.0.0",
     "@types/uuid": "^10.0.0",
+    "bitcoinjs-lib": "^7.0.0",
+    "ecpair": "^3.0.0",
+    "tiny-secp256k1": "^2.2.3",
     "typescript": "^5.7.0"
   }
 }
