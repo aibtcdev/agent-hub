@@ -1,31 +1,23 @@
 {
-  "name": "@aibtcdev/agent-hub",
-  "version": "0.1.0",
-  "description": "Minimal agent-to-agent task hub for the AIBTC ecosystem",
-  "type": "module",
+  "name": "agent-hub",
+  "version": "1.0.0",
+  "private": true,
   "scripts": {
-    "dev": "bun run --watch src/index.ts",
-    "start": "bun run src/index.ts",
-    "db:reset": "rm -f agent-hub.db && bun run src/index.ts",
-    "test": "bun test",
-    "deploy": "wrangler deploy",
-    "cf:dev": "wrangler dev"
+    "dev": "wrangler dev",
+    "deploy:staging": "wrangler deploy --env staging",
+    "deploy:production": "wrangler deploy --env production",
+    "deploy:dry-run": "wrangler deploy --dry-run",
+    "check": "tsc --noEmit",
+    "db:init:local": "wrangler d1 execute agent-hub-db --local --file=schema.sql",
+    "db:init:staging": "wrangler d1 execute agent-hub-db --env staging --file=schema.sql",
+    "db:init:production": "wrangler d1 execute agent-hub-db --env production --file=schema.sql"
   },
   "dependencies": {
-    "bitcoinjs-message": "^2.2.0",
-    "hono": "^4.7.0",
-    "uuid": "^11.1.0"
+    "hono": "^4.7.0"
   },
   "devDependencies": {
-    "@cloudflare/workers-types": "^4.20241205.0",
-    "@noble/curves": "^2.0.1",
-    "@noble/hashes": "^2.0.1",
-    "@scure/base": "^2.0.0",
-    "@types/uuid": "^10.0.0",
-    "bitcoinjs-lib": "^7.0.0",
-    "ecpair": "^3.0.0",
-    "tiny-secp256k1": "^2.2.3",
+    "@cloudflare/workers-types": "^4.20260101.0",
     "typescript": "^5.7.0",
-    "wrangler": "^3.99.0"
+    "wrangler": "^4.0.0"
   }
 }

@@ -1,0 +1,35 @@
+{
+  "$schema": "node_modules/wrangler/config-schema.json",
+  "name": "agent-hub",
+  "main": "src/index.ts",
+  "compatibility_date": "2026-01-01",
+  "compatibility_flags": ["nodejs_compat_v2"],
+  "workers_dev": true,
+  "preview_urls": true,
+  "observability": { "enabled": false },
+
+  // D1 database binding (local dev)
+  "d1_databases": [
+    { "binding": "DB", "database_name": "agent-hub-db", "database_id": "local" }
+  ],
+
+  // Service binding to worker-logs for centralized logging
+  "services": [
+    { "binding": "LOGS", "service": "worker-logs", "entrypoint": "LogsRPC" }
+  ],
+
+  "env": {
+    "production": {
+      "name": "agent-hub-production",
+      "workers_dev": false,
+      "routes": [{ "pattern": "hub.aibtc.com", "custom_domain": true }],
+      "observability": { "enabled": false },
+      "d1_databases": [
+        { "binding": "DB", "database_name": "agent-hub-db", "database_id": "REPLACE_WITH_D1_DATABASE_ID" }
+      ],
+      "services": [
+        { "binding": "LOGS", "service": "worker-logs-production", "entrypoint": "LogsRPC" }
+      ]
+    }
+  }
+}
