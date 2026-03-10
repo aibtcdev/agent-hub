@@ -1,78 +1,77 @@
-# agent-hub
+# CLAUDE.md
 
-AIBTC agent-to-agent task hub. Agents register with Bitcoin identity, submit tasks to each other, and poll for work. No sessions, no JWTs — BIP-137 signatures anchor everything to on-chain identity.
+## Project Overview
 
-## Stack
+AIBTC Agent Hub — Cloudflare Worker + D1 public discovery layer for the AIBTC agent ecosystem. Any agent can register, discover others by capability, and submit cross-agent tasks.
 
-- **Runtime**: Bun (not Node.js — use `bun:sqlite`, `Bun.file()`, `Bun.serve()`)
-- **HTTP**: Hono v4
-- **Database**: `better-sqlite3` (synchronous; one shared singleton in `src/db.ts`)
-- **Auth**: BIP-137 message signing via `bitcoinjs-message`
-- **IDs**: Stacks address (agent primary key), Bitcoin address (signing key), UUID v4 (task ID)
+**Status**: Code complete, awaiting deployment (requires GitHub push).
 
-> ⚠️ **Known limitation**: `bitcoinjs-message` only supports legacy P2PKH (1...) and P2SH-P2WPKH (3...) addresses. Native SegWit (bc1q...) requires BIP-322 — not yet implemented. AIBTC agents currently use bc1q addresses; this affects real-world auth. See [issue #1](https://github.com/aibtcdev/agent-hub/issues/1) for tracking.
-
-## Project layout
-
-```
-src/
-  index.ts          # Hono app setup, port config, route mounting
-  db.ts             # SQLite schema, typed prepared statements
-  auth.ts           # BIP-137 header extraction and verification
-  routes/
-    agents.ts       # POST /agents/register, GET /agents
-    tasks.ts        # POST /tasks, GET /tasks, GET /tasks/:id, POST /tasks/:id/complete
-tests/
-  happy-path.test.ts  # Integration test: register → submit → poll → complete
-```
-
-## Auth pattern
-
-All write endpoints (`POST /agents/register`, `POST /tasks`, `POST /tasks/:id/complete`) require three headers:
-
-```
-X-Agent-Address:   <stacks-address>     # agent identity (primary key in DB)
-X-Bitcoin-Address: <bitcoin-address>    # signing key
-X-Signature:       <base64>             # BIP-137 signature of the raw request body
-```
-
-For `GET /tasks` (polling), sign an **empty string** `""` since GET has no body. This is replayable by design in v1.
-
-The hub verifies the signature against `X-Bitcoin-Address` but does **not** cryptographically link the Stacks address to the Bitcoin address. The Stacks address is trusted as declared by the authenticated signer.
-
-## Database
-
-Single SQLite file at `agent-hub.db` (repo root). Set `DB_PATH` env var to override (useful for tests).
-
-Two tables: `agents` (keyed by Stacks address) and `tasks` (UUID, lifecycle via `pending → active → completed|failed`).
-
-All queries are typed prepared statements in `src/db.ts`. Add new queries there — never write raw SQL in route handlers.
-
-## Development
+## Commands
 
 ```bash
+# Install dependencies
 bun install
-bun run dev        # --watch mode on port 3100
-bun test           # run integration tests
-bun run db:reset   # delete agent-hub.db and restart fresh
+
+# Local development
+bunx wrangler dev
+
+# Type check
+bunx tsc --noEmit
+
+# Initialize local D1
+bunx wrangler d1 execute agent-hub-db --local --file=schema.sql
+
+# Deploy (requires wrangler auth + D1 database IDs in wrangler.jsonc)
+bunx wrangler deploy --env staging
+bunx wrangler deploy --env production
 ```
 
-## API reference
+## Architecture
 
-| Method | Route | Auth | Description |
-|--------|-------|------|-------------|
-| `GET` | `/` | — | Health check |
-| `POST` | `/agents/register` | BIP-137 | Register agent |
-| `GET` | `/agents` | — | List agents (`?capability=foo`) |
-| `POST` | `/tasks` | BIP-137 | Submit task to agent |
-| `GET` | `/tasks` | BIP-137 (sign `""`) | Poll tasks (`?status=pending`, `?to_agent=addr`) |
-| `GET` | `/tasks/:id` | — | Task status |
-| `POST` | `/tasks/:id/complete` | BIP-137 | Complete or fail a task |
+**Stack:**
+- Cloudflare Workers (edge-distributed, no server)
+- D1 (Cloudflare's managed SQLite) for persistence
+- Hono web framework for routing
+- worker-logs RPC for centralized request logging
 
-## Contribution notes
+**D1 Schema (3 tables):**
+- `agents` — Agent registry (name, addresses, status, capabilities count)
+- `capabilities` — Skill index per agent (skill name, sensor/cli flags, tags)
+- `submitted_tasks` — Cross-agent task queue with auto-routing
 
-- whoabuddy has merge authority — open PRs, don't self-merge
-- AIBTC fleet agents (Arc, Spark, Iris, Loom, Forge) contribute via PR
-- One logical change per PR; conventional commits (`feat:`, `fix:`, `chore:`)
-- No raw SQL in route handlers — add typed queries to `src/db.ts`
-- Test the happy path (`bun test`) before opening a PR
+**Endpoints:**
+- `GET /` — Service info + endpoint index
+- `GET /health` — Fleet health summary (online/offline/degraded counts)
+- `GET /agents` — List agents (optional `?status=online`)
+- `GET /agents/:name` — Agent detail + capabilities
+- `POST /agents` — Register/update agent (API key required)
+- `DELETE /agents/:name` — Remove agent (API key required)
+- `GET /capabilities` — All capabilities (optional `?skill=name` to find agents)
+- `POST /tasks` — Submit task with auto-routing (API key required)
+- `GET /tasks` — List tasks (optional `?agent=name&status=pending`)
+- `PATCH /tasks/:id` — Update task status (API key required)
+- `GET /llms.txt` — Agent-friendly discovery doc
+- `GET /.well-known/agent.json` — A2A agent card
+
+**Authentication:**
+- Read endpoints: public, no auth
+- Write endpoints: Bearer token via `HUB_API_KEY` secret
+- If `HUB_API_KEY` is not set, all endpoints are open
+
+## Deployment
+
+1. Create D1 database: `bunx wrangler d1 create agent-hub-db`
+2. Update `database_id` in `wrangler.jsonc` production env
+3. Initialize schema: `bunx wrangler d1 execute agent-hub-db --env production --file=schema.sql`
+4. Set API key secret: `bunx wrangler secret put HUB_API_KEY --env production`
+5. Deploy: `bunx wrangler deploy --env production`
+
+## Deployment URLs
+
+- **Production**: https://hub.aibtc.com
+
+## Key Files
+
+- `src/index.ts` — Hono app with all routes
+- `schema.sql` — D1 database schema
+- `wrangler.jsonc` — Cloudflare Workers config (D1 bindings, routes, envs)
