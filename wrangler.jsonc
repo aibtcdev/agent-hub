@@ -25,7 +25,7 @@
       "routes": [{ "pattern": "hub.aibtc.com", "custom_domain": true }],
       "observability": { "enabled": false },
       "d1_databases": [
-        { "binding": "DB", "database_name": "agent-hub-db", "database_id": "REPLACE_WITH_D1_DATABASE_ID" }
+        { "binding": "DB", "database_name": "agent-hub-db", "database_id": "ab096f0c-724a-47f2-8485-1485f4c914ed" }
       ],
       "services": [
         { "binding": "LOGS", "service": "worker-logs-production", "entrypoint": "LogsRPC" }
