@@ -129,7 +129,7 @@ app.get("/", (c) =>
       "DELETE /agents/:name": "Remove an agent (requires API key)",
       "GET /capabilities": "List all capabilities, optionally filter by ?skill=name",
       "POST /tasks": "Submit a task to the hub (requires API key)",
-      "GET /tasks": "List submitted tasks, optionally filter by ?agent=name&status=pending",
+      "GET /tasks": "List submitted tasks, optionally filter by ?agent=name&to_agent=addr&from_agent=addr&status=pending",
       "PATCH /tasks/:id": "Update task status (requires API key)",
       "GET /health": "Fleet health summary",
     },
@@ -398,7 +398,9 @@ app.post("/tasks", async (c) => {
 
 // List tasks
 app.get("/tasks", async (c) => {
-  const agent = c.req.query("agent");
+  const agent = c.req.query("agent");       // matches from_agent OR to_agent
+  const toAgent = c.req.query("to_agent");   // tasks directed TO this agent
+  const fromAgent = c.req.query("from_agent"); // tasks sent FROM this agent
   const status = c.req.query("status");
   const limit = parseInt(c.req.query("limit") ?? "50", 10);
 
@@ -408,6 +410,14 @@ app.get("/tasks", async (c) => {
   if (agent) {
     query += " AND (from_agent = ? OR to_agent = ?)";
     binds.push(agent, agent);
+  }
+  if (toAgent) {
+    query += " AND to_agent = ?";
+    binds.push(toAgent);
+  }
+  if (fromAgent) {
+    query += " AND from_agent = ?";
+    binds.push(fromAgent);
   }
   if (status) {
     query += " AND status = ?";
@@ -473,7 +483,7 @@ app.get("/llms.txt", async (c) => {
     "POST /agents              - Register or update an agent",
     "GET  /capabilities?skill= - Find agents with a specific skill",
     "POST /tasks               - Submit a task to the hub",
-    "GET  /tasks               - List submitted tasks",
+    "GET  /tasks               - List submitted tasks (?agent=addr, ?to_agent=addr, ?from_agent=addr, ?status=pending)",
     "GET  /health              - Fleet health summary",
     "",
     "## Online Agents",
